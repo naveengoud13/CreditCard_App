@@ -1,7 +1,7 @@
 package com.mayank.email;
 
+import java.security.SecureRandom;
 import java.util.Properties;
-import java.util.Random;
 
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
@@ -9,57 +9,105 @@ import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMessage.RecipientType;
 
 public class GmailSender {
 
-	public static boolean sendGmail(String to, String subject, String text) {
-		boolean flag = false;
+    private static final String SMTP_HOST = "smtp.gmail.com";
+    private static final String SMTP_PORT = "587";
 
-		final String username = "kinnerapavankalyan7";
-		final String password = "sfxfjtkzckbtobvx";
+    private static final String USERNAME =
+            System.getenv("MAIL_USERNAME");
 
-		Properties props = new Properties();
+    private static final String PASSWORD =
+            System.getenv("MAIL_PASSWORD");
 
-		props.put("mail.smtp.auth", "true");
-		props.put("mail.smtp.starttls.enable", "true");
-		props.put("mail.smtp.port", "587");
-		props.put("mail.smtp.host", "smtp.gmail.com");
+    private static final SecureRandom RANDOM = new SecureRandom();
 
-		Session session = Session.getInstance(props, new Authenticator() {
+    /**
+     * Sends an email using Gmail SMTP.
+     *
+     * @param to recipient email address
+     * @param subject email subject
+     * @param text email body
+     * @return true if the email was sent successfully, otherwise false
+     */
+    public static boolean sendGmail(
+            String to,
+            String subject,
+            String text
+    ) {
 
-			@Override
-			protected PasswordAuthentication getPasswordAuthentication() {
+        if (USERNAME == null || USERNAME.isBlank()
+                || PASSWORD == null || PASSWORD.isBlank()) {
 
-				return new PasswordAuthentication(username, password);
-			}
-		});
+            System.err.println(
+                    "Mail credentials are not configured."
+            );
 
-		try {
-			Message message = new MimeMessage(session);
+            return false;
+        }
 
-			message.setRecipient(RecipientType.TO, new InternetAddress(to));
-			message.setFrom(new InternetAddress(username.concat("@gmail.com")));
-			message.setText(text);
-			message.setSubject(subject);
+        Properties props = new Properties();
 
-			Transport.send(message);
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", SMTP_HOST);
+        props.put("mail.smtp.port", SMTP_PORT);
 
-			flag = true;
+        Session session = Session.getInstance(
+                props,
+                new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication
+                    getPasswordAuthentication() {
 
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
+                        return new PasswordAuthentication(
+                                USERNAME,
+                                PASSWORD
+                        );
+                    }
+                }
+        );
 
-		return flag;
-	}
+        try {
+            Message message = new MimeMessage(session);
 
-	public static int generateRandomNumber() {
-		Random random = new Random();
-		int min = 100000;
-		int max = 999999;
-		return random.nextInt(max - min + 1) + min;
-	}
+            message.setRecipient(
+                    RecipientType.TO,
+                    new InternetAddress(to)
+            );
 
+            message.setFrom(
+                    new InternetAddress(USERNAME)
+            );
+
+            message.setSubject(subject);
+            message.setText(text);
+
+            Transport.send(message);
+
+            return true;
+
+        } catch (MessagingException | IllegalArgumentException e) {
+
+            System.err.println(
+                    "Failed to send email: " + e.getMessage()
+            );
+
+            return false;
+        }
+    }
+
+    /**
+     * Generates a secure six-digit random number.
+     *
+     * @return six-digit verification number
+     */
+    public static int generateRandomNumber() {
+
+        return 100000 + RANDOM.nextInt(900000);
+    }
 }
